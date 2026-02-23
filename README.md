@@ -105,7 +105,12 @@ Controls: `j`/`k` up/down, `enter` open, `r` refresh, `tab` switch feed, `u` bac
 
 ## Gopher output
 
-Use `--gopher` for RFC 1436-style output on `home`, `inbox`, and `event view`.
+Gostr can format Nostr data as RFC 1436 Gopher protocol output. Use `--gopher` with `home`, `inbox`, or `event view` to get menu-style lines instead of plain text. This lets you pipe Nostr feeds into Gopher servers or serve them over the classic pre-web protocol.
+
+```bash
+noscl home --gopher
+noscl inbox --gopher
+```
 
 ## Credits
 
