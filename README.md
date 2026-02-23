@@ -95,6 +95,14 @@ Specify <content> as '-' to read from stdin.
 
 Controls: `j`/`k` up/down, `enter` open, `r` refresh, `tab` switch feed, `u` back, `q` quit.
 
+### Screenshots
+
+![Main menu](docs/screenshots/tui_menu.png)
+
+![Feed list](docs/screenshots/tui_tl.png)
+
+![Note detail](docs/screenshots/tui_note.png)
+
 ## Gopher output
 
 Use `--gopher` for RFC 1436-style output on `home`, `inbox`, and `event view`.
