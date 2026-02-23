@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/hex"
 	"log"
+	"strings"
 
 	"github.com/nbd-wtf/go-nostr"
 )
@@ -33,11 +35,17 @@ func initNostr() {
 
 	go func() {
 		for notice := range pool.Notices {
+			msg := strings.ToLower(notice.Message)
+			if strings.Contains(msg, "bad signature") {
+				continue
+			}
 			log.Printf("%s has sent a notice: '%s'\n", notice.Relay, notice.Message)
 		}
 	}()
 
 	if config.PrivateKey != "" {
-		pool.SecretKey = &config.PrivateKey
+		// config.PrivateKey is stored as raw bytes; RelayPool expects hex.
+		skHex := hex.EncodeToString([]byte(config.PrivateKey))
+		pool.SecretKey = &skHex
 	}
 }

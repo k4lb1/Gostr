@@ -1,0 +1,9 @@
+Gostr - Nostr CLI with TUI and Gopher output
+
+This software is based on noscl by fiatjaf:
+  https://github.com/fiatjaf/noscl
+  License: PDDL (Public Domain Dedication and License)
+  https://opendatacommons.org/licenses/pddl/
+
+Third-party components and their licenses are listed in README.md.
+Run "go list -m all" for the full dependency tree.

@@ -1,3 +1,6 @@
 noscl
 dist
 .idea
+.cursor
+config.json
+AUDIT.md

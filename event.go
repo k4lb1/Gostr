@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -9,8 +10,9 @@ import (
 )
 
 func viewEvent(opts docopt.Opts) {
+	gopher, _ := opts.Bool("--gopher")
 	verbose, _ := opts.Bool("--verbose")
-    jsonformat, _ := opts.Bool("--json")
+	jsonformat, _ := opts.Bool("--json")
 	id := opts["<id>"].(string)
 	if id == "" {
 		log.Println("provided event ID was empty")
@@ -25,7 +27,14 @@ func viewEvent(opts docopt.Opts) {
 			continue
 		}
 
-		printEvent(event, nil, verbose, jsonformat)
+		if gopher {
+			printGostrHeader()
+			for _, line := range formatAsGopher(event, nil) {
+				fmt.Printf("%s\r\n", line)
+			}
+		} else {
+			printEvent(event, nil, verbose, jsonformat)
+		}
 		break
 	}
 }
@@ -55,24 +64,40 @@ func deleteEvent(opts docopt.Opts) {
 // iterEventsWithTimeout returns a channel of events; this channel will be
 // closed once events have stopped arriving for timeoutDuration
 func iterEventsWithTimeout(events chan nostr.Event, timeoutDuration time.Duration) chan nostr.Event {
-	timeout := time.After(timeoutDuration)
-	tick := time.Tick(1 * time.Millisecond)
-
-	resulsChan := make(chan nostr.Event)
+	resultsChan := make(chan nostr.Event)
 
 	go func() {
+		defer close(resultsChan)
+
+		timer := time.NewTimer(timeoutDuration)
+		defer timer.Stop()
+
 		for {
 			select {
-			case <-timeout:
-				close(resulsChan)
+			case ev, ok := <-events:
+				if !ok {
+					// upstream closed: we're done
+					return
+				}
+
+				// forward event
+				resultsChan <- ev
+
+				// reset inactivity timer
+				if !timer.Stop() {
+					select {
+					case <-timer.C:
+					default:
+					}
+				}
+				timer.Reset(timeoutDuration)
+
+			case <-timer.C:
+				// no events for timeoutDuration: stop
 				return
-			case <-tick:
-				timeout = time.After(timeoutDuration)
-				event := <-events
-				resulsChan <- event
 			}
 		}
 	}()
 
-	return resulsChan
+	return resultsChan
 }

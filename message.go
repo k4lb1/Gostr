@@ -35,6 +35,7 @@ func message(opts docopt.Opts) {
 		message, err = readContentStdin(4096)
 		if err != nil {
 			log.Printf("Failed reading content from stdin: %s", err)
+			return
 		}
 	}
 	sharedSecret, err := nip04.ComputeSharedSecret(config.PrivateKey, receiverKey)

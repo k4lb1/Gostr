@@ -14,8 +14,9 @@ import (
 const USAGE = `noscl
 
 Usage:
-  noscl home [--verbose] [--json] [--onlyreplies] [--noreplies] [--kinds=<kinds>...] [--since=<since>] [--until=<until>] [--limit=<limit>]
-  noscl inbox [--verbose] [--json] [--onlyreplies] [--noreplies] [--since=<since>] [--until=<until>] [--limit=<limit>]
+  noscl tui
+  noscl home [--gopher] [--verbose] [--json] [--onlyreplies] [--noreplies] [--kinds=<kinds>...] [--since=<since>] [--until=<until>] [--limit=<limit>]
+  noscl inbox [--gopher] [--verbose] [--json] [--onlyreplies] [--noreplies] [--since=<since>] [--until=<until>] [--limit=<limit>]
   noscl setprivate <key>
   noscl sign <event-json>
   noscl verify <event-json>
@@ -27,7 +28,7 @@ Usage:
   noscl follow <pubkey> [--name=<name>]
   noscl unfollow <pubkey>
   noscl following
-  noscl event view [--verbose] [--json] <id>
+  noscl event view [--gopher] [--verbose] [--json] <id>
   noscl event delete <id>
   noscl share-contacts
   noscl key-gen
@@ -57,9 +58,13 @@ func main() {
 	f, err := os.Open(path)
 	if err != nil {
 		saveConfig(path)
-		f, _ = os.Open(path)
+		f, err = os.Open(path)
+		if err != nil {
+			log.Fatal("can't open config file " + path + ": " + err.Error())
+			return
+		}
 	}
-	f, _ = os.Open(path)
+	defer f.Close()
 	err = json.NewDecoder(f).Decode(&config)
 	if err != nil {
 		log.Fatal("can't parse config file " + path + ": " + err.Error())
@@ -74,6 +79,9 @@ func main() {
 	}
 
 	switch {
+	case opts["tui"].(bool):
+		installLogFilter()
+		runTUI(path)
 	case opts["home"].(bool):
 		home(opts, false)
 	case opts["inbox"].(bool):

@@ -4,10 +4,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/schnorr"
-	"github.com/btcsuite/btcd/btcutil/bech32"
 
 	"github.com/docopt/docopt-go"
 	"github.com/nbd-wtf/go-nostr/nip06"
@@ -15,8 +15,8 @@ import (
 )
 
 func decodeKey(keyraw string) ([]byte, error) {
-	if len(keyraw) == 64 {
-		// hex-encoded
+	// raw 64-char hex
+	if len(keyraw) == 64 && !strings.HasPrefix(keyraw, "nsec") {
 		keyval, err := hex.DecodeString(keyraw)
 		if err != nil {
 			return nil, fmt.Errorf("decoding key from hex: %w", err)
@@ -24,26 +24,34 @@ func decodeKey(keyraw string) ([]byte, error) {
 		return keyval, nil
 	}
 
-	// bech32-encoded
-	_, keyval, err := bech32.Decode(keyraw)
-	if err != nil {
-		return nil, err
-	}
+	// NIP-19 bech32-encoded (nsec...)
+	raw, prefix, err := nip19.Decode(keyraw)
 	if err != nil {
 		return nil, fmt.Errorf("decoding key from bech32: %w", err)
 	}
-	return keyval, nil
+	if prefix != "nsec" {
+		return nil, fmt.Errorf("unexpected bech32 prefix %q, want \"nsec\"", prefix)
+	}
+	// raw already contains the 32-byte private key.
+	return raw, nil
 }
 
 func setPrivateKey(opts docopt.Opts) {
 	keyraw := opts["<key>"].(string)
-	keyval, err := decodeKey(keyraw)
-	if err != nil {
+	if err := setPrivateKeyString(keyraw); err != nil {
 		log.Printf("Failed to parse private key: %s\n", err.Error())
 		return
 	}
+}
 
+// setPrivateKeyString decodes nsec/hex and sets config.PrivateKey. Caller must save config.
+func setPrivateKeyString(keyraw string) error {
+	keyval, err := decodeKey(keyraw)
+	if err != nil {
+		return err
+	}
 	config.PrivateKey = string(keyval)
+	return nil
 }
 
 func showPublicKey(opts docopt.Opts) {
@@ -62,13 +70,10 @@ func showPublicKey(opts docopt.Opts) {
 }
 
 func getPubKey(privateKey string) string {
-	if keyb, err := hex.DecodeString(privateKey); err != nil {
-		log.Printf("Error decoding key from hex: %s\n", err.Error())
-		return ""
-	} else {
-		_, pubkey := btcec.PrivKeyFromBytes(keyb)
-		return hex.EncodeToString(schnorr.SerializePubKey(pubkey))
-	}
+	// privateKey is stored as raw bytes in the config.
+	keyb := []byte(privateKey)
+	_, pubkey := btcec.PrivKeyFromBytes(keyb)
+	return hex.EncodeToString(schnorr.SerializePubKey(pubkey))
 }
 
 func keyGen(opts docopt.Opts) {

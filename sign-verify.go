@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -27,7 +28,8 @@ func signEventJSON(opts docopt.Opts) {
 		return
 	}
 
-	if err := event.Sign(config.PrivateKey); err != nil {
+	skHex := hex.EncodeToString([]byte(config.PrivateKey))
+	if err := event.Sign(skHex); err != nil {
 		log.Printf("Failed to sign: %s.\n", err.Error())
 		return
 	}

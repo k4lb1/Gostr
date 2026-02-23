@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -115,7 +116,9 @@ func printEvent(evt nostr.Event, nick *string, verbose bool, jsonformat bool) {
 	case nostr.KindRecommendServer:
 	case nostr.KindContactList:
 	case nostr.KindEncryptedDirectMessage:
-		sharedSecret, err := nip04.ComputeSharedSecret(config.PrivateKey, evt.PubKey)
+		// config.PrivateKey is stored as raw bytes; nip04 expects hex.
+		secretHex := hex.EncodeToString([]byte(config.PrivateKey))
+		sharedSecret, err := nip04.ComputeSharedSecret(secretHex, evt.PubKey)
 		if err != nil {
 			log.Printf("Error computing shared key: %s. \n", err.Error())
 			return

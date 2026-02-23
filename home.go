@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -18,6 +19,7 @@ func home(opts docopt.Opts, inboxMode bool) {
 
 	initNostr()
 
+	gopher, _ := opts.Bool("--gopher")
 	verbose, _ := opts.Bool("--verbose")
 	jsonformat, _ := opts.Bool("--json")
 	noreplies, _ := opts.Bool("--noreplies")
@@ -65,6 +67,7 @@ func home(opts docopt.Opts, inboxMode bool) {
 	}
 	filters[0].Kinds = intkinds
 	_, all := pool.Sub(filters)
+	headerPrinted := false
 	for event := range nostr.Unique(all) {
 		// Do we have a nick for the author of this message?
 		nick, ok := nameMap[event.PubKey]
@@ -83,26 +86,37 @@ func home(opts docopt.Opts, inboxMode bool) {
 					continue
 				}
 				nick = metadata.Name
-				nameMap[nick] = event.PubKey
+				nameMap[event.PubKey] = nick
 			}
 		}
 
 		// if only want events referencing another
 		if onlyreplies || noreplies {
-			var hasReferences bool = false
+			hasReferences := false
 			for _, tag := range event.Tags {
-				if tag[0] == "e" {
+				if len(tag) > 0 && tag[0] == "e" {
 					hasReferences = true
-					if noreplies {
-						continue
-					}
+					break
 				}
+			}
+			if noreplies && hasReferences {
+				continue
 			}
 			if onlyreplies && !hasReferences {
 				continue
 			}
 		}
 
-		printEvent(event, &nick, verbose, jsonformat)
+		if gopher {
+			if !headerPrinted {
+				printGostrHeader()
+				headerPrinted = true
+			}
+			for _, line := range formatAsGopher(event, &nick) {
+				fmt.Printf("%s\r\n", line)
+			}
+		} else {
+			printEvent(event, &nick, verbose, jsonformat)
+		}
 	}
 }

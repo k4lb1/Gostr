@@ -81,6 +81,70 @@ func publish(opts docopt.Opts) {
 	printPublishStatus(publishEvent, statuses)
 }
 
+// PublishReaction sends a kind-7 reaction (like) to the given event. NIP-25.
+// Returns the created event ID on success.
+func PublishReaction(evID, authorPubkey string) (string, error) {
+	if config.PrivateKey == "" {
+		return "", errors.New("private key not set")
+	}
+	initNostr()
+	tags := nostr.Tags{
+		{"e", evID},
+		{"p", authorPubkey},
+	}
+	ev := nostr.Event{
+		CreatedAt: time.Now(),
+		Kind:      nostr.KindReaction,
+		Tags:      tags,
+		Content:   "+",
+	}
+	pub, _, err := pool.PublishEvent(&ev)
+	if err != nil {
+		return "", err
+	}
+	return pub.ID, nil
+}
+
+// PublishBoost sends a kind-6 boost (repost) for the given event. NIP-18.
+// eventJSON is the stringified JSON of the boosted event (recommended by NIP-18).
+// Returns the created event ID on success.
+func PublishBoost(evID, authorPubkey, eventJSON string) (string, error) {
+	if config.PrivateKey == "" {
+		return "", errors.New("private key not set")
+	}
+	initNostr()
+	tags := nostr.Tags{
+		{"e", evID},
+		{"p", authorPubkey},
+	}
+	ev := nostr.Event{
+		CreatedAt: time.Now(),
+		Kind:      nostr.KindBoost,
+		Tags:      tags,
+		Content:   eventJSON,
+	}
+	pub, _, err := pool.PublishEvent(&ev)
+	if err != nil {
+		return "", err
+	}
+	return pub.ID, nil
+}
+
+// PublishDeletion publishes a kind-5 deletion for the given event ID. NIP-09.
+func PublishDeletion(evID string) error {
+	if config.PrivateKey == "" {
+		return errors.New("private key not set")
+	}
+	initNostr()
+	_, _, err := pool.PublishEvent(&nostr.Event{
+		CreatedAt: time.Now(),
+		Kind:      nostr.KindDeletion,
+		Tags:      nostr.Tags{{"e", evID}},
+		Content:   "",
+	})
+	return err
+}
+
 func optSlice(opts docopt.Opts, key string) ([]string, error) {
 	if v, ok := opts[key]; ok {
 		vals, ok := v.([]string)
