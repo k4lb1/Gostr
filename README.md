@@ -11,6 +11,14 @@ Nostr CLI with interactive TUI and Gopher-style output (Gostr). Based on [noscl]
 
 Runs on Linux, macOS, Windows, and FreeBSD. Tested on x86_64 and ARM (e.g. Raspberry Pi).
 
+## Screenshots
+
+![Main menu](docs/screenshots/tui_menu.png)
+
+![Feed list](docs/screenshots/tui_tl.png)
+
+![Note detail](docs/screenshots/tui_note.png)
+
 ## Installation
 
 ### Build from source
@@ -94,14 +102,6 @@ Specify <content> as '-' to read from stdin.
 - Set private key
 
 Controls: `j`/`k` up/down, `enter` open, `r` refresh, `tab` switch feed, `u` back, `q` quit.
-
-### Screenshots
-
-![Main menu](docs/screenshots/tui_menu.png)
-
-![Feed list](docs/screenshots/tui_tl.png)
-
-![Note detail](docs/screenshots/tui_note.png)
 
 ## Gopher output
 
