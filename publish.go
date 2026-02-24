@@ -130,6 +130,31 @@ func PublishBoost(evID, authorPubkey, eventJSON string) (string, error) {
 	return pub.ID, nil
 }
 
+// PublishReply publishes a kind-1 reply. NIP-10: root e-tag, optional reply e-tag, p-tags.
+func PublishReply(rootID, rootAuthor, replyID, replyAuthor, content string) error {
+	if config.PrivateKey == "" {
+		return errors.New("private key not set")
+	}
+	initNostr()
+	var tags nostr.Tags
+	tags = append(tags, nostr.Tag{"e", rootID, "", "root"})
+	if replyID != "" && replyID != rootID {
+		tags = append(tags, nostr.Tag{"e", replyID, "", "reply"})
+	}
+	tags = append(tags, nostr.Tag{"p", rootAuthor})
+	if replyAuthor != "" && replyAuthor != rootAuthor {
+		tags = append(tags, nostr.Tag{"p", replyAuthor})
+	}
+	ev := nostr.Event{
+		CreatedAt: time.Now(),
+		Kind:      nostr.KindTextNote,
+		Tags:      tags,
+		Content:   content,
+	}
+	_, _, err := pool.PublishEvent(&ev)
+	return err
+}
+
 // PublishDeletion publishes a kind-5 deletion for the given event ID. NIP-09.
 func PublishDeletion(evID string) error {
 	if config.PrivateKey == "" {

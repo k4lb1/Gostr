@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -45,6 +46,8 @@ const (
 	screenFollow
 	screenComposeNote
 	screenComposeMessage
+	screenImageURLSelect
+	screenImageASCII
 )
 
 const feedLimit = 25
@@ -77,7 +80,19 @@ type model struct {
 	composeFollowKeys  []string // sorted pubkeys from Following, for recipient selection
 	composeRecipientCur int
 	composeRecipientSelected string // hex pubkey when chosen from list
+	composeReplyTargetID     string   // event we reply to (may be root or a reply)
+	composeReplyTargetAuthor string   // author of target event (for p-tag)
+	composeReplyRootID       string   // thread root event ID
+	composeReplyRootAuthor   string   // root author pubkey
+	detailStack         []nostr.Event // thread navigation: [root] or [root, reply1, ...]
+	detailReplies       []nostr.Event // replies to detailStack[len-1]
+	detailReplyCur      int           // selected reply index (j/k)
+	detailRepliesLoading bool
 	detailStatus       string
+	imageURLs          []string // URLs to choose from when [i] pressed
+	imageURLCur        int
+	imageASCIIContent  string // loaded ASCII art or error
+	imageASCIILoading  bool
 }
 
 
@@ -98,6 +113,17 @@ type reactionDoneMsg struct {
 	action     string // "like" "unlike" "boost" "unboost"
 	targetID   string
 	ourEventID string
+}
+
+type repliesLoadedMsg struct {
+	replies []nostr.Event
+	nameMap map[string]string
+	rootID  string // event ID we loaded replies for
+}
+
+type imageASCIILoadedMsg struct {
+	content string
+	err     error
 }
 
 func runTUI(configPath string) {
@@ -206,6 +232,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return updateComposeNote(m, msg)
 	case screenComposeMessage:
 		return updateComposeMessage(m, msg)
+	case screenImageURLSelect:
+		return updateImageURLSelect(m, msg)
+	case screenImageASCII:
+		return updateImageASCII(m, msg)
 	}
 	return m, nil
 }
@@ -234,6 +264,10 @@ func (m model) View() string {
 		return viewComposeNote(m)
 	case screenComposeMessage:
 		return viewComposeMessage(m)
+	case screenImageURLSelect:
+		return viewImageURLSelect(m)
+	case screenImageASCII:
+		return viewImageASCII(m)
 	}
 	return ""
 }
@@ -278,7 +312,16 @@ func loadHomeFeed(inbox, notesOnly, aether bool) tea.Msg {
 		if inbox {
 			events = append(events, ev)
 		} else if aether {
-			events = append(events, ev)
+			hasE := false
+			for _, tag := range ev.Tags {
+				if len(tag) > 0 && tag[0] == "e" {
+					hasE = true
+					break
+				}
+			}
+			if !hasE {
+				events = append(events, ev)
+			}
 		} else if notesOnly {
 			hasE := false
 			for _, tag := range ev.Tags {
@@ -384,5 +427,71 @@ func loadOurReactions(events []nostr.Event) (likedMap, boostedMap map[string]str
 func loadFeedCmd(inbox, notesOnly, aether bool) tea.Cmd {
 	return func() tea.Msg {
 		return loadHomeFeed(inbox, notesOnly, aether)
+	}
+}
+
+// loadReplies fetches Kind 1 events that reference eventID via e-tag (NIP-10).
+func loadReplies(eventID string) tea.Msg {
+	if eventID == "" {
+		return repliesLoadedMsg{replies: nil, nameMap: make(map[string]string), rootID: ""}
+	}
+	initNostr()
+	filters := nostr.Filters{{
+		Tags:  nostr.TagMap{"e": {eventID}},
+		Kinds: []int{nostr.KindTextNote},
+		Limit: 50,
+	}}
+	_, all := pool.Sub(filters)
+	var replies []nostr.Event
+	ch := iterEventsWithTimeout(nostr.Unique(all), 2*time.Second)
+	for ev := range ch {
+		replies = append(replies, ev)
+	}
+	sort.Slice(replies, func(i, j int) bool {
+		return replies[i].CreatedAt.Before(replies[j].CreatedAt)
+	})
+	nameMap := make(map[string]string)
+	for _, ev := range replies {
+		if _, ok := nameMap[ev.PubKey]; !ok {
+			nameMap[ev.PubKey] = ""
+		}
+	}
+	if len(nameMap) > 0 {
+		authors := make([]string, 0, len(nameMap))
+		for pk := range nameMap {
+			authors = append(authors, pk)
+		}
+		metaFilters := nostr.Filters{{
+			Authors: authors,
+			Kinds:   []int{nostr.KindSetMetadata},
+			Limit:   len(authors),
+		}}
+		_, metaCh := pool.Sub(metaFilters)
+		for ev := range iterEventsWithTimeout(nostr.Unique(metaCh), 2*time.Second) {
+			if ev.Kind != nostr.KindSetMetadata {
+				continue
+			}
+			var meta Metadata
+			if err := json.Unmarshal([]byte(ev.Content), &meta); err != nil {
+				continue
+			}
+			if meta.Name != "" {
+				nameMap[ev.PubKey] = meta.Name
+			}
+		}
+	}
+	return repliesLoadedMsg{replies: replies, nameMap: nameMap, rootID: eventID}
+}
+
+func loadRepliesCmd(eventID string) tea.Cmd {
+	return func() tea.Msg {
+		return loadReplies(eventID)
+	}
+}
+
+func loadImageASCIICmd(url string) tea.Cmd {
+	return func() tea.Msg {
+		content, err := fetchAndConvertToASCII(url, asciiImageMaxWidth)
+		return imageASCIILoadedMsg{content: content, err: err}
 	}
 }

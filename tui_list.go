@@ -57,7 +57,14 @@ func updateList(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "enter", " ":
 			if len(m.events) > 0 && m.listCur >= 0 && m.listCur < len(m.events) {
+				ev := m.events[m.listCur]
 				m.screen = screenDetail
+				m.detailStack = []nostr.Event{ev}
+				m.detailReplies = nil
+				m.detailReplyCur = 0
+				m.detailRepliesLoading = true
+				m.detailStatus = ""
+				return m, loadRepliesCmd(ev.ID)
 			}
 			return m, nil
 		case "r":
@@ -128,11 +135,11 @@ func clampListOffset(m model) int {
 }
 
 func viewList(m model) string {
-	title := "0  Home"
+	title := "1  Home"
 	if m.inbox {
-		title = "5  Inbox"
+		title = "1  Inbox"
 	} else if m.aether {
-		title = "3  Aether"
+		title = "1  Aether"
 	} else if !m.notesOnly {
 		title = "1  Notes + Comments"
 	}
@@ -171,7 +178,7 @@ func viewList(m model) string {
 	}
 	for i := start; i < end; i++ {
 		ev := m.events[i]
-		lines := listLinesForEvent(ev, m.nameMap, contentWidth, i+1)
+		lines := listLinesForEvent(ev, m.nameMap, contentWidth)
 		for _, line := range lines {
 			if i == m.listCur {
 				s += tuiStyle.Cursor.Render(line) + "\n"
@@ -180,7 +187,7 @@ func viewList(m model) string {
 			}
 		}
 		if i < len(m.events)-1 {
-			s += tuiStyle.Base.Render("  " + strings.Repeat("\u2500", 24) + "  ") + "\n"
+			s += tuiStyle.Base.Render("i  " + strings.Repeat("\u2500", 22)) + "\n"
 		}
 	}
 	footer := "i  [j/k] nav  [enter] open  [r] refresh  [tab] feed  [u] back"
@@ -191,8 +198,8 @@ func viewList(m model) string {
 	return tuiStyle.Screen.Render(s)
 }
 
-// listLinesForEvent returns 1–2 lines for the list: number, author, content preview.
-func listLinesForEvent(ev nostr.Event, nameMap map[string]string, contentWidth int, num int) []string {
+// listLinesForEvent returns 1–2 lines for the list: Gopher type 0, author, content preview.
+func listLinesForEvent(ev nostr.Event, nameMap map[string]string, contentWidth int) []string {
 	author := shorten(ev.PubKey)
 	if n, ok := nameMap[ev.PubKey]; ok && n != "" {
 		author = n
@@ -200,15 +207,7 @@ func listLinesForEvent(ev nostr.Event, nameMap map[string]string, contentWidth i
 	content := strings.ReplaceAll(ev.Content, "\n", " ")
 	content = strings.ReplaceAll(content, "\t", " ")
 	content = strings.TrimSpace(content)
-	var numStr string
-	if num < 10 {
-		numStr = " " + string(rune('0'+num))
-	} else if num < 100 {
-		numStr = string(rune('0'+num/10)) + string(rune('0'+num%10))
-	} else {
-		numStr = ".."
-	}
-	prefix := "  " + numStr + "  [" + author + "] "
+	prefix := "0  [" + author + "] "
 	available := contentWidth - len([]rune(prefix))
 	if available < 20 {
 		available = 20
@@ -218,7 +217,7 @@ func listLinesForEvent(ev nostr.Event, nameMap map[string]string, contentWidth i
 	out := make([]string, 0, 2)
 	out = append(out, prefix+strings.TrimSpace(lines[0]))
 	if len(lines) > 1 {
-		out = append(out, "       "+strings.TrimSpace(lines[1]))
+		out = append(out, "    "+strings.TrimSpace(lines[1]))
 	}
 	truncated := len(lines) > 2 || (len(lines) == 1 && len([]rune(content)) > available) || (len(lines) == 2 && len([]rune(content)) > 2*available)
 	if truncated {

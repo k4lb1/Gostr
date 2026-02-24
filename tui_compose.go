@@ -75,7 +75,15 @@ func updateComposeNote(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
-			m.screen = screenMenu
+			if m.composeReplyTargetID != "" {
+				m.screen = screenDetail
+				m.composeReplyTargetID = ""
+				m.composeReplyTargetAuthor = ""
+				m.composeReplyRootID = ""
+				m.composeReplyRootAuthor = ""
+			} else {
+				m.screen = screenMenu
+			}
 			m.composeInput.Blur()
 			m.err = ""
 			return m, nil
@@ -88,12 +96,28 @@ func updateComposeNote(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.err = "Set key first"
 				return m, nil
 			}
-			err := publishNote(content)
+			var err error
+			if m.composeReplyTargetID != "" {
+				err = PublishReply(m.composeReplyRootID, m.composeReplyRootAuthor, m.composeReplyTargetID, m.composeReplyTargetAuthor, content)
+			} else {
+				err = publishNote(content)
+			}
 			m.composeInput.Blur()
 			m.composeInput.Reset()
 			if err != nil {
 				m.err = err.Error()
 				return m, nil
+			}
+			if m.composeReplyTargetID != "" {
+				m.screen = screenDetail
+				targetID := m.composeReplyTargetID
+				m.composeReplyTargetID = ""
+				m.composeReplyTargetAuthor = ""
+				m.composeReplyRootID = ""
+				m.composeReplyRootAuthor = ""
+				m.detailRepliesLoading = true
+				m.err = ""
+				return m, loadRepliesCmd(targetID)
 			}
 			m.screen = screenMenu
 			m.err = ""
@@ -106,7 +130,11 @@ func updateComposeNote(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func viewComposeNote(m model) string {
-	s := tuiStyle.Base.Render("3  Publish note") + "\n\n"
+	title := "3  Publish note"
+	if m.composeReplyTargetID != "" {
+		title = "0  Reply"
+	}
+	s := tuiStyle.Base.Render(title) + "\n\n"
 	if m.err != "" {
 		s += tuiStyle.Base.Render("i  "+m.err) + "\n"
 	}

@@ -139,6 +139,8 @@ Direct dependencies and their licenses:
 | [github.com/btcsuite/btcd](https://github.com/btcsuite/btcd) | ISC |
 | [github.com/mitchellh/go-homedir](https://github.com/mitchellh/go-homedir) | MIT |
 | [github.com/dustin/go-humanize](https://github.com/dustin/go-humanize) | MIT |
+| [github.com/atotto/clipboard](https://github.com/atotto/clipboard) | BSD-3-Clause |
+| [github.com/TheZoraiz/ascii-image-converter](https://github.com/TheZoraiz/ascii-image-converter) | Apache-2.0 |
 | [gopkg.in/yaml.v2](https://gopkg.in/yaml.v2) | Apache-2.0 / MIT |
 
 Full dependency tree and licenses can be verified with:
@@ -146,3 +148,5 @@ Full dependency tree and licenses can be verified with:
 ```bash
 go list -m all
 ```
+
+See [NOTICE](NOTICE) for attribution details.

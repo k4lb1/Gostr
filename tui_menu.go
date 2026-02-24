@@ -23,6 +23,7 @@ const (
 const (
 	optItemRelays = iota
 	optItemSetKey
+	optItemAllowImageASCII
 	optItemCount
 )
 
@@ -48,6 +49,7 @@ var optItems = []struct {
 }{
 	{"1", " Relays"},
 	{"2", " Set key (nsec)"},
+	{"3", " Allow image-to-ASCII"},
 }
 
 func updateMenu(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -146,7 +148,7 @@ func updateOptions(m model, msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		key := msg.String()
-		if key >= "1" && key <= "2" {
+		if key >= "1" && key <= "3" {
 			idx := int(key[0] - '1')
 			if idx < optItemCount {
 				m.menuCur = idx
@@ -190,6 +192,10 @@ func runOptAction(m model, idx int) (tea.Model, tea.Cmd) {
 		m.setKeyInput.Reset()
 		m.setKeyInput.Focus()
 		return m, textinput.Blink
+	case optItemAllowImageASCII:
+		config.AllowImageASCII = !config.AllowImageASCII
+		saveConfig(tuiConfigPath)
+		return m, nil
 	}
 	return m, nil
 }
@@ -282,12 +288,20 @@ func viewOptions(m model) string {
 	lines = append(lines, "Optionen")
 	lines = append(lines, "")
 	optStart := len(lines)
-	for _, item := range optItems {
-		lines = append(lines, "  "+item.prefix+item.label)
+	for i, item := range optItems {
+		line := "  " + item.prefix + item.label
+		if i == optItemAllowImageASCII {
+			if config.AllowImageASCII {
+				line += " [x]"
+			} else {
+				line += " [ ]"
+			}
+		}
+		lines = append(lines, line)
 	}
 	lines = append(lines, "")
 	footerIndex := len(lines)
-	lines = append(lines, "i  [1-2] select  [j/k] move  [u] back  [q] quit")
+	lines = append(lines, "i  [1-3] select  [j/k] move  [u] back  [q] quit")
 
 	h := m.height
 	if h <= 0 {
@@ -419,7 +433,7 @@ func viewRelays(m model) string {
 			s += tuiStyle.Base.Render(line) + "\n"
 		}
 	}
-	s += "\n" + tuiStyle.Base.Render("[a] add  [r] remove  [u] back") + "\n"
+	s += "\n" + tuiStyle.Base.Render("i  [a] add  [r] remove  [u] back") + "\n"
 	return tuiStyle.Screen.Render(s)
 }
 
@@ -442,6 +456,6 @@ func viewFollowing(m model) string {
 	for _, line := range m.followLines {
 		s += tuiStyle.Base.Render(line) + "\n"
 	}
-	s += "\n" + tuiStyle.Base.Render("[u] back") + "\n"
+	s += "\n" + tuiStyle.Base.Render("i  [u] back") + "\n"
 	return tuiStyle.Screen.Render(s)
 }

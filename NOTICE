@@ -5,5 +5,54 @@ This software is based on noscl by fiatjaf:
   License: PDDL (Public Domain Dedication and License)
   https://opendatacommons.org/licenses/pddl/
 
-Third-party components and their licenses are listed in README.md.
-Run "go list -m all" for the full dependency tree.
+---
+
+Third-party components used in this project:
+
+github.com/nbd-wtf/go-nostr
+  License: BSD-3-Clause
+  https://github.com/nbd-wtf/go-nostr
+
+github.com/charmbracelet/bubbletea
+  License: MIT
+  https://github.com/charmbracelet/bubbletea
+
+github.com/charmbracelet/bubbles
+  License: MIT
+  https://github.com/charmbracelet/bubbles
+
+github.com/charmbracelet/lipgloss
+  License: MIT
+  https://github.com/charmbracelet/lipgloss
+
+github.com/docopt/docopt-go
+  License: MIT
+  https://github.com/docopt/docopt-go
+
+github.com/btcsuite/btcd
+  License: ISC
+  https://github.com/btcsuite/btcd
+
+github.com/mitchellh/go-homedir
+  License: MIT
+  https://github.com/mitchellh/go-homedir
+
+github.com/dustin/go-humanize
+  License: MIT
+  https://github.com/dustin/go-humanize
+
+github.com/atotto/clipboard
+  License: BSD-3-Clause
+  https://github.com/atotto/clipboard
+
+github.com/TheZoraiz/ascii-image-converter
+  License: Apache-2.0
+  https://github.com/TheZoraiz/ascii-image-converter
+
+gopkg.in/yaml.v2
+  License: Apache-2.0 / MIT
+  https://github.com/go-yaml/yaml
+
+---
+
+For the complete dependency tree, run: go list -m all
